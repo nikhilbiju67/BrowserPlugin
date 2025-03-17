@@ -1,6 +1,17 @@
-name: Flutter Plugin Dry Run Publish
+name: Publish Browser plugin
 
 on:
+  workflow_dispatch:
+    inputs:
+      ReleaseType:
+        description: 'Release Type'
+        required: true
+        default: 'Patch'
+        type: choice
+        options:
+          - "Major"
+          - "Minor"
+          - "Patch"
   push:
     branches:
       - main
@@ -10,17 +21,14 @@ on:
       - feature/in_app_web_browser
 
 jobs:
-  publish-dry-run:
+  publish:
+    permissions:
+      id-token: write # Required for authentication using OIDC
+      contents: write
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.29.1'  # Change to your Flutter version or remove for latest stable
 
       - name: Create env.dart with GitHub Secrets
         env:
@@ -37,11 +45,93 @@ jobs:
       - name: Print env.dart for verification
         run: cat lib/services/env.dart
 
+      - name: Get branch names.
+        id: branch-names
+        uses: tj-actions/branch-names@v8
+
+      - name: Set up Git
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          export BRANCH=${{ steps.branch-names.outputs.current_branch }}
+          echo "branch: $BRANCH"
+          if [[ "$BRANCH" != "master" ]]; then
+            echo "Tagging cannot be done on a branch other than master"
+            exit 1
+          fi
+          export VERSION=$(cat pubspec.yaml | grep "version:" | awk '{print $2}' | sed 's/^[ \t]*//;s/[ \t]*$//')
+          echo $VERSION
+          export UPDATE_CHOICE=${{ inputs.ReleaseType }}
+          export MAJOR=$(echo $VERSION | cut -d. -f1)
+          export MINOR=$(echo $VERSION | cut -d. -f2)
+          export PATCH=$(echo $VERSION | cut -d"+" -f1 | cut -d"." -f3)
+          if [[ "$UPDATE_CHOICE" == "Major" ]]; then export NEW_TAG=$((MAJOR + 1)).0.0; fi
+          if [[ "$UPDATE_CHOICE" == "Minor" ]]; then export NEW_TAG=$MAJOR.$((MINOR + 1)).0; fi
+          if [[ "$UPDATE_CHOICE" == "Patch" ]]; then export NEW_TAG=$MAJOR.$MINOR.$((PATCH + 1)); fi
+          echo NEW_TAG $NEW_TAG
+          echo "NEW_TAG=$NEW_TAG" >> $GITHUB_ENV
+          sed -i "s/version: $VERSION/version: $NEW_TAG/g" pubspec.yaml
+
+      - uses: actions/setup-java@v1
+        with:
+          java-version: '12.x'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.1'  # Change to your Flutter version or remove for latest stable
+          channel: 'stable'
+
       - name: Install Dependencies
         run: flutter pub get
 
       - name: Analyze Dart Code
         run: flutter analyze
 
-      - name: Dry-run Flutter Publish
+      - name: Run Tests
+        run: flutter test lib/
+
+      - name: Setup Pub Credentials
+        shell: bash
+        env:
+          INPUT_ACCESS_TOKEN: ${{ secrets.INPUT_ACCESS_TOKEN }}
+          INPUT_REFRESH_TOKEN: ${{ secrets.INPUT_REFRESH_TOKEN }}
+        run: |
+          sh ./pub_login.sh
+
+      - name: Check Publish Warnings
         run: flutter pub publish --dry-run
+
+      - name: Publish Package
+        if: github.event_name == 'workflow_dispatch'
+        run: flutter pub publish -f
+
+      - name: Commit pubspec.yaml
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_TAG: ${{ env.NEW_TAG }}
+        run: |
+          git add pubspec.yaml
+          git commit -m "Version bumped to $NEW_TAG"
+          git push origin $BRANCH
+
+      - name: Create New Tag
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_TAG: ${{ env.NEW_TAG }}
+        run: |
+          git tag v${{ env.NEW_TAG }}
+          git push origin v${{ env.NEW_TAG }}
+
+      - name: Create GitHub release
+        if: success()
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_TAG: ${{ env.NEW_TAG }}
+        with:
+          tag_name: v${{ env.NEW_TAG }}
+          release_name: Release v${{ env.NEW_TAG }}
+          draft: false
+          prerelease: false
