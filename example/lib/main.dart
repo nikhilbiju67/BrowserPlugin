@@ -1,4 +1,4 @@
-import 'package:browser_plugin/payment_browser.dart';
+import 'package:browser_plugin/browser_plugin.dart';
 import 'package:flutter/material.dart';
 
 
