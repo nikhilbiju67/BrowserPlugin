@@ -12,12 +12,6 @@ on:
           - "Major"
           - "Minor"
           - "Patch"
-  push:
-    branches:
-      - main
-      - develop
-      - feature/payment_web_view
-      - feature/in_app_web_browser
 
 jobs:
   publish:
