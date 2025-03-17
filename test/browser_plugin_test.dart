@@ -1,4 +1,3 @@
-import 'package:browser_plugin/payment_browser.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:browser_plugin/browser_plugin_platform_interface.dart';
 import 'package:browser_plugin/browser_plugin_method_channel.dart';

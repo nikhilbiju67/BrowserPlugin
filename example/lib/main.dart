@@ -14,7 +14,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _platformVersion = 'Unknown';
+  final String _platformVersion = 'Unknown';
 
   @override
   void initState() {
@@ -28,7 +28,6 @@ class _MyAppState extends State<MyApp> {
         floatingActionButton: FloatingActionButton(onPressed: () {
           BrowserPlugin paymentBrowser = BrowserPlugin(
             onUrlChange: (url){
-              print(url);
             },
               onFinishCallback: () {},
               url: "https://www.google.com/",
