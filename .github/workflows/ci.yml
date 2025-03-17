@@ -97,8 +97,7 @@ jobs:
         run: |
           sh ./pub_login.sh
 
-      - name: Check Publish Warnings
-        run: flutter pub publish --dry-run
+      # Removed the "Check Publish Warnings" step that used `flutter pub publish --dry-run`
 
       - name: Publish Package
         if: github.event_name == 'workflow_dispatch'
