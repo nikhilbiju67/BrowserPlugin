@@ -1,6 +1,6 @@
 name: browser_plugin
 description: "A new Flutter plugin to open webview in a New Activity"
-version: 
+version: 0.0.1
 homepage: https://github.com/nikhilbiju67/BrowserPlugin
 
 environment:
