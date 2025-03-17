@@ -16,7 +16,6 @@ on:
     branches:
       - main
       - develop
-      - master
       - feature/payment_web_view
       - feature/in_app_web_browser
 
@@ -55,8 +54,8 @@ jobs:
           git config user.email github-actions@github.com
           export BRANCH=${{ steps.branch-names.outputs.current_branch }}
           echo "branch: $BRANCH"
-          if [[ "$BRANCH" != "master" ]]; then
-            echo "Tagging cannot be done on a branch other than master"
+          if [[ "$BRANCH" != "main" ]]; then
+            echo "Tagging cannot be done on a branch other than main"
             exit 1
           fi
           export VERSION=$(cat pubspec.yaml | grep "version:" | awk '{print $2}' | sed 's/^[ \t]*//;s/[ \t]*$//')
